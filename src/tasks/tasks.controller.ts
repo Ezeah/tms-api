@@ -1,62 +1,77 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
+  ParseIntPipe,
   Patch,
   Post,
-  Put,
+  UnauthorizedException,
+  UseGuards,
+  ValidationPipe,
 } from '@nestjs/common';
 import { CreateTaskDto } from './dto/create-task.dto';
-import { UpdateUserDto } from 'src/users/dto/update-user.dto';
+import { TasksService } from './tasks.service';
+import { BeltGuard } from 'src/belt/belt.guard';
 
 @Controller('tasks')
+@UseGuards(BeltGuard)
 export class TasksController {
+  constructor(private readonly tasksService: TasksService) {}
+
   // Get /tasks --> []
   @Get()
-  gettasks() {
-    return [];
+  getTasks() {
+    try {
+      return this.tasksService.getTasks();
+    } catch (err) {
+      throw new NotFoundException('No tasks found');
+    }
   }
 
   // Get /tasks/:id --> { ... }
   @Get(':id')
-  getonetask(@Param('id') id: string) {
-    return {
-      id,
-    };
+  getOneTask(@Param('id', ParseIntPipe) id: number) {
+    try {
+      return this.tasksService.getTask(id);
+    } catch (err) {
+      throw new NotFoundException('Task not found');
+    }
   }
 
   // Post /tasks
   @Post()
-  createTasks(@Body() createTaskDto: CreateTaskDto) {
-    return {
-      name: createTaskDto.name,
-    };
-  }
-  // Put /tasks/:id --> { ... }
-  @Put(':id')
-  updateTasks(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return {
-      id,
-      name: updateUserDto,
-    };
+  createTask(@Body(new ValidationPipe()) createTaskDto: CreateTaskDto) {
+    try {
+      return this.tasksService.createTask(createTaskDto);
+    } catch (err) {
+      throw new BadRequestException('Task not created');
+    }
   }
 
   // Patch /tasks/:id --> { ... }
   @Patch(':id')
-  patchTasks(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return {
-      id,
-      name: updateUserDto,
-    };
+  updateTask(
+    @Param('id') id: string,
+    @Body(new ValidationPipe()) updateTaskDto: CreateTaskDto,
+  ) {
+    try {
+      return this.tasksService.updateTask(id, updateTaskDto);
+    } catch (err) {
+      throw new UnauthorizedException('Task cannot be updated');
+    }
   }
 
   // Delete /tasks/:id
   @Delete(':id')
-  removeTasks(@Param('id') id: string) {
-    return {
-      id,
-    };
+  removeTask(@Param('id', ParseIntPipe) id: number) {
+    try {
+      return this.tasksService.deleteTask(+id);
+    } catch (err) {
+      throw new BadRequestException('Failed to delete');
+    }
   }
 }
